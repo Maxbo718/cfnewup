@@ -33,13 +33,16 @@ for k, n in fam.items():
     samples.append((str(n), ip))
 print(f'去重族数: {len(samples)}')
 
-# 4) HTTP 探活（必须是能返回 trace 的 CF 边缘）
+# 4) HTTPS 探活：通用SNI + --resolve 绑IP（/cdn-cgi/trace 为 CF 边缘内建路径）
+import subprocess
 def alive(item):
     pfx, ip = item
     try:
-        t = get(f'http://{ip}/cdn-cgi/trace', timeout=8).decode('utf-8', 'ignore')
+        r = subprocess.run(['curl','-sk','--max-time','8','--resolve',f'www.cloudflare.com:443:{ip}',
+                            'https://www.cloudflare.com/cdn-cgi/trace'], capture_output=True, timeout=10)
+        t = r.stdout.decode('utf-8', 'ignore')
         m = re.search(r'colo=(\w+)', t)
-        return (pfx, ip, m.group(1)) if 'colo=' in t else None
+        return (pfx, ip, m.group(1)) if m else None
     except Exception:
         return None
 
@@ -76,6 +79,8 @@ for i, (pfx, ip, colo) in enumerate(sorted(ok, key=lambda x: (names.get(geos.get
     tag = names.get(cc, cc or '?')
     rows.append((cc, pfx, ip, colo, f"{ip}:{ports[i % 5]}{star}#借壳{tag}-{city[:10]}[{colo}]"))
 
+if len(rows) < 20:
+    raise SystemExit(f'FATAL: 边缘探活仅存活{len(rows)}条，疑似探测被拦或数据异常，拒绝提交')
 with open('byoip_latest.txt', 'w') as f:
     f.write(f"# 自动生成 {time.strftime('%F %T UTC', time.gmtime())} by byoip_refresh.py | 总数{len(rows)} | ★=亚洲属地优先 | #尾段=CF落点colo\n")
     for cc, pfx, ip, colo, line in rows:
