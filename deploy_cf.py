@@ -29,9 +29,25 @@ code = open("_worker.js", "rb").read()
 new_sha = hashlib.sha256(code).hexdigest()
 print(f"仓库 _worker.js sha256={new_sha[:16]} size={len(code)}")
 
-# 2) 读线上当前代码，相同则跳过
-online = api(BASE, headers={**HDR, "Accept": "*/*"}).decode("utf-8", errors="replace")
-print(f"online len={len(online)} head={online[:60]!r} tail={online[-40:]!r}")
+# 2) 读线上当前代码，相同则跳过（CF 对 modules 脚本返回 multipart 封装）
+import re, gzip
+raw = api(BASE, headers={**HDR, "Accept": "*/*"})
+online_bytes = raw
+first = raw.split(b"\r\n", 1)[0]
+if first.startswith(b"--"):
+    bnd = first.strip(b"-")
+    parts = raw.split(b"--" + bnd)
+    print(f"multipart parts={len(parts)}")
+    for p in parts:
+        head = p[:200]
+        if b"Content-Disposition" in head:
+            print("PART:", head[:160])
+        if b'filename="_worker.js"' in p:
+            online_bytes = p.split(b"\r\n\r\n", 1)[1][:-2]
+            if online_bytes[:2] == b"\x1f\x8b":
+                online_bytes = gzip.decompress(online_bytes)
+            print(f"extracted _worker.js part: {len(online_bytes)} bytes")
+online = online_bytes.decode("utf-8", errors="replace")
 if hashlib.sha256(online.encode()).hexdigest() == new_sha:
     print("SKIP: 线上代码与仓库一致，无需部署")
     sys.exit(0)
