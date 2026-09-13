@@ -31,6 +31,7 @@ print(f"仓库 _worker.js sha256={new_sha[:16]} size={len(code)}")
 
 # 2) 读线上当前代码，相同则跳过
 online = api(BASE, headers={**HDR, "Accept": "*/*"}).decode("utf-8", errors="replace")
+print(f"online len={len(online)} head={online[:60]!r} tail={online[-40:]!r}")
 if hashlib.sha256(online.encode()).hexdigest() == new_sha:
     print("SKIP: 线上代码与仓库一致，无需部署")
     sys.exit(0)
