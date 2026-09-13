@@ -43,13 +43,13 @@ def alive(item):
               capture_output=True, timeout=10)
         t = r.stdout.decode('utf-8','ignore')
         m = re.search(r'colo=(\w+)', t)
-        return (pfx, ip, m.group(1)) if m else None
+        return (pfx, ip, m.group(1) if m else '-')
     except Exception:
         return None
 
 with ThreadPoolExecutor(20) as pool:
-    ok = [r for r in pool.map(alive, samples) if r]
-print(f'边缘存活: {len(ok)}')
+    ok = list(pool.map(alive, samples))
+print(f'全量{len(ok)}族 | runner侧可探活: {sum(1 for r in ok if r[2] != chr(45))}（仅此为机房视角标注，不作过滤——中国线路可达性以用户自测为准）')
 
 # 5) ip-api 批量城市标注（每次最多100）
 def geo(ips):
@@ -80,10 +80,10 @@ for i, (pfx, ip, colo) in enumerate(sorted(ok, key=lambda x: (names.get(geos.get
     tag = names.get(cc, cc or '?')
     rows.append((cc, pfx, ip, colo, f"{ip}:{ports[i % 5]}{star}#借壳{tag}-{city[:10]}[{colo}]"))
 
-if len(rows) < 20:
-    raise SystemExit(f'FATAL: 边缘探活仅存活{len(rows)}条，疑似探测被拦或数据异常，拒绝提交')
+if len(rows) < 100:
+    raise SystemExit(f'FATAL: 边缘探活仅存活{len(rows)}条，疑似上游数据源异常，拒绝提交')
 with open('byoip_latest.txt', 'w') as f:
-    f.write(f"# 自动生成 {time.strftime('%F %T UTC', time.gmtime())} by byoip_refresh.py | 总数{len(rows)} | ★=亚洲属地优先 | #尾段=CF落点colo\n")
+    f.write(f"# 自动生成 {time.strftime('%F %T UTC', time.gmtime())} by byoip_refresh.py | 总数{len(rows)} | ★=亚洲属地优先 | 尾段colo=GitHub机房视角非你的落点 | 使用前先用测速工具在你线路上验\n")
     for cc, pfx, ip, colo, line in rows:
         f.write(line + '\n')
 with open('byoip_ips.txt', 'w') as f:
