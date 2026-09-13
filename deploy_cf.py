@@ -43,7 +43,8 @@ for b in s.get("bindings", []):
     if t == "kv_namespace":
         bindings.append({"type": "kv_namespace", "name": b["name"], "namespace_id": b["namespace_id"]})
     elif t == "plain_text":
-        bindings.append({"type": "plain_text", "name": b["name"], "value": b.get("value", "")})
+        bindings.append({"type": "plain_text", "name": b["name"],
+                         "text": b.get("text") or b.get("value") or ""})
     elif t in ("secret_text", "secret_bytes"):
         print(f"ABORT: 绑定 {b['name']} 是 secret，API 读不到值，重放会丢失。"
               f"请改用 KV/面板配置，或手动在 CF 后台补回后再跑。", file=sys.stderr)
