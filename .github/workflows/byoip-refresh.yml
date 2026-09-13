@@ -1,0 +1,26 @@
+name: BYOIP list refresh
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1'   # 每周一 UTC 3点（北京 11:00）
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refresh BYOIP list
+        run: python3 byoip_refresh.py
+      - name: Commit
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add byoip_latest.txt byoip_ips.txt
+          if git diff --staged --quiet; then echo "no change"; else
+            git commit -m "byoip: weekly refresh $(date -u +%F)"
+            git push
+          fi
