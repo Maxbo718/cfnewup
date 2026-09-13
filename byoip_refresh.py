@@ -33,14 +33,15 @@ for k, n in fam.items():
     samples.append((str(n), ip))
 print(f'去重族数: {len(samples)}')
 
-# 4) HTTPS 探活：通用SNI + --resolve 绑IP（/cdn-cgi/trace 为 CF 边缘内建路径）
+# 4) 探活：curl --resolve 真绑IP，SNI 用公共 www.cloudflare.com（无任何用户信息）
 import subprocess
 def alive(item):
     pfx, ip = item
     try:
-        r = subprocess.run(['curl','-sk','--max-time','8','--resolve',f'www.cloudflare.com:443:{ip}',
-                            'https://www.cloudflare.com/cdn-cgi/trace'], capture_output=True, timeout=10)
-        t = r.stdout.decode('utf-8', 'ignore')
+        r = subprocess.run(['curl','-sk','--max-time','8','--resolve',
+              f'www.cloudflare.com:443:{ip}','https://www.cloudflare.com/cdn-cgi/trace'],
+              capture_output=True, timeout=10)
+        t = r.stdout.decode('utf-8','ignore')
         m = re.search(r'colo=(\w+)', t)
         return (pfx, ip, m.group(1)) if m else None
     except Exception:
