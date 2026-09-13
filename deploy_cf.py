@@ -42,7 +42,7 @@ if first.startswith(b"--"):
         head = p[:200]
         if b"Content-Disposition" in head:
             print("PART:", head[:160])
-        if b'filename="_worker.js"' in p:
+        if b'name="_worker.js"' in p[:120]:
             online_bytes = p.split(b"\r\n\r\n", 1)[1][:-2]
             if online_bytes[:2] == b"\x1f\x8b":
                 online_bytes = gzip.decompress(online_bytes)
