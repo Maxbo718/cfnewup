@@ -15,8 +15,9 @@ jobs:
         run: |
           set -e
           CURRENT=$(curl -s --max-time 15 https://dm.113210833.xyz/api/config | jq -r .version || echo "unknown")
-          LATEST=$(curl -s --max-time 15 "https://hub.docker.com/v2/repositories/logvar/danmu-api/tags?page_size=1" | jq -r '.results[0].name' || echo "unknown")
-          echo "current=$CURRENT latest=$LATEST"
+          LATEST_RAW=$(curl -s --max-time 15 "https://img.shields.io/docker/v/logvar/danmu-api?sort=semver" | grep -o 'v[0-9.]*' | head -1 || echo "unknown")
+          LATEST=${LATEST_RAW#v}
+          echo "current=$CURRENT latest=$LATEST (raw=$LATEST_RAW)"
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
           echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
           if [ "$CURRENT" = "$LATEST" ]; then
