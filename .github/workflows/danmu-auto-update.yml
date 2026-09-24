@@ -14,12 +14,16 @@ jobs:
         id: check
         run: |
           set -e
-          # 线上版本（runner 出口 IP 可能被 API 限流，失败则视为 unknown → 走部署，幂等安全）
+          # 线上版本（runner 出口 IP 可能被 API 限流，重试一次，仍失败视为 unknown → 走部署，幂等安全）
           CURRENT=$(curl -sA "Mozilla/5.0" --max-time 15 https://dm.113210833.xyz/api/config | jq -r .version 2>/dev/null || echo "unknown")
-          # 上游 Docker 最新版本（主源 hub.docker.com，兜底 shields.io）
-          LATEST_RAW=$(curl -s --max-time 15 "https://hub.docker.com/v2/repositories/logvar/danmu-api/tags?page_size=1" | jq -r '.results[0].name' 2>/dev/null)
-          if [ -z "$LATEST_RAW" ] || [ "$LATEST_RAW" = "null" ]; then
-            LATEST_RAW=$(curl -s --max-time 15 "https://img.shields.io/docker/v/logvar/danmu-api?sort=semver" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          if [ "$CURRENT" = "unknown" ]; then
+            sleep 20
+            CURRENT=$(curl -sA "Mozilla/5.0" --max-time 15 https://dm.113210833.xyz/api/config | jq -r .version 2>/dev/null || echo "unknown")
+          fi
+          # 上游 Docker 最新版本：shields.io 语义版本排序（自动排除 latest 标签），hub.docker.com 兜底
+          LATEST_RAW=$(curl -s --max-time 15 "https://img.shields.io/docker/v/logvar/danmu-api?sort=semver" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          if [ -z "$LATEST_RAW" ]; then
+            LATEST_RAW=$(curl -s --max-time 15 "https://hub.docker.com/v2/repositories/logvar/danmu-api/tags?page_size=10" | jq -r '[.results[].name | select(. != "latest")][0]' 2>/dev/null)
           fi
           LATEST=${LATEST_RAW#v}
           echo "current=$CURRENT latest=$LATEST (raw=$LATEST_RAW)"
