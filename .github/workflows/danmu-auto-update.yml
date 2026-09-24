@@ -61,10 +61,12 @@ jobs:
       - name: 验证部署结果
         if: steps.check.outputs.skip != 'true'
         run: |
-          sleep 10
-          NEW=$(curl -s --max-time 20 https://dm.113210833.xyz/api/config | jq -r .version || echo "unknown")
+          # 等待部署稳定 + 限流窗口(RATE_LIMIT_MAX_REQUESTS=3/分钟)重置；只发一次请求避免触发限流 403
+          sleep 30
+          OUT=$(curl -s -w $'\n%{http_code}' --max-time 25 https://dm.113210833.xyz/api/config)
+          HTTP=$(echo "$OUT" | tail -n1)
+          NEW=$(echo "$OUT" | head -n-1 | jq -r .version 2>/dev/null || echo "unknown")
           echo "部署后线上版本: $NEW（部署前 ${{ steps.check.outputs.current }}，上游 ${{ steps.check.outputs.latest }}）"
-          HTTP=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 https://dm.113210833.xyz/api/config)
           echo "config 接口 HTTP: $HTTP"
           if [ "$HTTP" != "200" ]; then
             echo "::error::部署后服务不可用 (HTTP $HTTP)"
