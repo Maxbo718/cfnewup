@@ -5,6 +5,10 @@ on:
   schedule:
     - cron: '0 */6 * * *'  # 每6小时自动检查一次
 
+# 允许工作流向仓库推送提交（否则 GITHUB_TOKEN 默认只读，git push 会 403）
+permissions:
+  contents: write
+
 jobs:
   sync-release:
     runs-on: ubuntu-latest
